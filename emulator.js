@@ -1,12 +1,11 @@
-// Phantasy Star - Sega Master System Emulator using JSSMS
+// Phantasy Star - Sega Master System Emulator using EmulatorJS
 // Loads ROM from local file and runs full SMS emulation
 
-let sms = null;
+let core = null;
 let canvas, ctx;
 let isRunning = false;
 let romData = null;
 let audioContext = null;
-let audioScriptProcessor = null;
 
 const ROM_FILENAME = 'Phantasy Star (World).sms';
 const EMULATOR_WIDTH = 256;
@@ -15,38 +14,33 @@ const EMULATOR_FPS = 60;
 
 // Keyboard mappings
 const keyMap = {
-    'ArrowUp': 2, 'w': 2, 'W': 2,
-    'ArrowDown': 3, 's': 3, 'S': 3,
-    'ArrowLeft': 4, 'a': 4, 'A': 4,
-    'ArrowRight': 5, 'd': 5, 'D': 5,
-    ' ': 0, 'z': 0, 'Z': 0,
-    'x': 1, 'X': 1,
-    'Enter': 7, 'enter': 7
+    'ArrowUp': 'up', 'w': 'up', 'W': 'up',
+    'ArrowDown': 'down', 's': 'down', 'S': 'down',
+    'ArrowLeft': 'left', 'a': 'left', 'A': 'left',
+    'ArrowRight': 'right', 'd': 'right', 'D': 'right',
+    ' ': 'a', 'z': 'a', 'Z': 'a',
+    'x': 'b', 'X': 'b',
+    'Enter': 'start', 'enter': 'start'
 };
 
 // Game state
 let buttons = {};
-let frameInterval = null;
 
 window.onload = async function() {
     canvas = document.getElementById('canvas');
     ctx = canvas.getContext('2d');
     
-    // Create offscreen canvas for rendering
-    const offscreenCanvas = document.createElement('canvas');
-    offscreenCanvas.width = EMULATOR_WIDTH;
-    offscreenCanvas.height = EMULATOR_HEIGHT;
-    const offscreenCtx = offscreenCanvas.getContext('2d');
-    
-    // Initialize buttons state
-    for (let i = 0; i < 8; i++) {
-        buttons[i] = false;
-    }
-    
     document.getElementById('startBtn').onclick = startGame;
     document.getElementById('resetBtn').onclick = resetGame;
     document.getElementById('saveBtn').onclick = saveState;
     document.getElementById('loadBtn').onclick = loadState;
+    
+    // Check for JSMess (EmulatorJS) in global scope
+    if (typeof JSMESS === 'undefined' && typeof core === 'undefined') {
+        document.getElementById('loading').innerHTML = `<div style="color: red;">Error: EmulatorJS library not loaded<br><small>Check your internet connection</small></div>`;
+        document.getElementById('status').textContent = 'Error: Emulator library not loaded';
+        return;
+    }
     
     // Load ROM
     try {
@@ -68,63 +62,21 @@ window.onload = async function() {
     }
 };
 
-// Initialize JSSMS emulator
-function initSMS() {
-    if (sms) return;
+// Initialize EmulatorJS
+function initEmulator() {
+    if (core) return;
     
-    // Create emulator instance
-    sms = new JSSMS.Core({
+    // Initialize JSMess (EmulatorJS)
+    core = new JSMESS.Core({
+        system: 'sms',
+        canvas: canvas,
         width: EMULATOR_WIDTH,
-        height: EMULATOR_HEIGHT,
-        palette: 'master-system',
-        sound: true,
-        soundSampleRate: 44100,
-        soundFrameDuration: 1000 / EMULATOR_FPS
+        height: EMULATOR_HEIGHT
     });
     
-    // Set up video output
-    sms.emulator.video.setCallback((framebuffer) => {
-        const imageData = ctx.createImageData(EMULATOR_WIDTH, EMULATOR_HEIGHT);
-        
-        // Convert framebuffer to RGBA
-        for (let i = 0; i < framebuffer.length; i++) {
-            const color = framebuffer[i];
-            const paletteColor = sms.emulator.video.getPaletteColor(color);
-            const offset = i * 4;
-            
-            imageData.data[offset] = paletteColor.r;     // R
-            imageData.data[offset + 1] = paletteColor.g; // G
-            imageData.data[offset + 2] = paletteColor.b; // B
-            imageData.data[offset + 3] = 255;            // Alpha
-        }
-        
-        ctx.putImageData(imageData, 0, 0);
-    });
-    
-    // Set up sound
+    // Set up audio
     if (!audioContext) {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        
-        // Create script processor for audio
-        audioScriptProcessor = audioContext.createScriptProcessor(2048, 0, 2);
-        audioScriptProcessor.onaudioprocess = (event) => {
-            if (!isRunning) return;
-            
-            const outputLeft = event.outputBuffer.getChannelData(0);
-            const outputRight = event.outputBuffer.getChannelData(1);
-            
-            // Get audio samples from emulator
-            const samples = sms.emulator.sound.getSamples(2048);
-            
-            for (let i = 0; i < samples.length; i++) {
-                const sample = samples[i] * 0.3; // Reduce volume
-                outputLeft[i] = sample;
-                outputRight[i] = sample;
-            }
-        };
-        
-        // Connect audio to speakers
-        audioScriptProcessor.connect(audioContext.destination);
     }
 }
 
@@ -133,11 +85,14 @@ function loadROM() {
     if (!romData) return false;
     
     try {
+        // Convert ArrayBuffer to Uint8Array
+        const romArray = new Uint8Array(romData);
+        
         // Reset emulator
-        sms.emulator.reset();
+        core.reset();
         
         // Load the ROM
-        sms.emulator.loadROM(new Uint8Array(romData));
+        core.loadROM(romArray);
         
         return true;
     } catch (error) {
@@ -158,12 +113,8 @@ function startGame() {
         return;
     }
     
-    // Initialize audio context on user interaction
-    if (audioContext && audioContext.state === 'suspended') {
-        audioContext.resume();
-    }
-    
-    initSMS();
+    // Initialize emulator
+    initEmulator();
     
     if (!loadROM()) {
         document.getElementById('status').textContent = 'Error: Failed to load ROM';
@@ -171,12 +122,13 @@ function startGame() {
     }
     
     // Start emulation
-    sms.emulator.start();
+    core.start();
     isRunning = true;
     
-    // Start game loop
-    lastTime = performance.now();
-    requestAnimationFrame(gameLoop);
+    // Resume audio context
+    if (audioContext && audioContext.state === 'suspended') {
+        audioContext.resume();
+    }
     
     document.getElementById('status').textContent = 'Game running. Enjoy!';
     document.getElementById('startBtn').textContent = 'Stop Game';
@@ -185,23 +137,16 @@ function startGame() {
     document.getElementById('loadBtn').disabled = false;
     document.getElementById('loading').classList.add('hidden');
     
-    // Resume audio context
-    if (audioContext) {
-        audioContext.resume();
-    }
+    // Start game loop
+    requestAnimationFrame(gameLoop);
 }
 
 // Stop the game
 function stopGame() {
-    if (sms) {
-        sms.emulator.stop();
+    if (core) {
+        core.stop();
     }
     isRunning = false;
-    
-    if (frameInterval) {
-        clearInterval(frameInterval);
-        frameInterval = null;
-    }
     
     // Clear screen
     ctx.fillStyle = '#000000';
@@ -219,17 +164,17 @@ function stopGame() {
 
 // Reset game
 function resetGame() {
-    if (sms) {
-        sms.emulator.reset();
+    if (core) {
+        core.reset();
         document.getElementById('status').textContent = 'Game reset';
     }
 }
 
 // Save state
 function saveState() {
-    if (sms) {
+    if (core) {
         try {
-            const state = sms.saveState();
+            const state = core.saveState();
             localStorage.setItem('sms_save', JSON.stringify(state));
             document.getElementById('status').textContent = 'Game saved!';
         } catch (e) {
@@ -242,8 +187,8 @@ function saveState() {
 function loadState() {
     try {
         const saved = localStorage.getItem('sms_save');
-        if (saved && sms) {
-            sms.loadState(JSON.parse(saved));
+        if (saved && core) {
+            core.loadState(JSON.parse(saved));
             document.getElementById('status').textContent = 'Game loaded!';
         } else if (saved) {
             document.getElementById('status').textContent = 'Emulator not running. Start game to load state.';
@@ -263,9 +208,9 @@ function gameLoop(timestamp) {
     const deltaTime = timestamp - lastTime;
     lastTime = timestamp;
     
-    // Run emulator for this frame
-    if (sms) {
-        sms.emulator.runFrame();
+    // Run emulator
+    if (core) {
+        core.run();
     }
     
     requestAnimationFrame(gameLoop);
@@ -278,31 +223,29 @@ document.addEventListener('keydown', (e) => {
         return;
     }
     
-    const buttonIndex = keyMap[e.key];
-    if (buttonIndex !== undefined && buttons[buttonIndex] === false) {
-        buttons[buttonIndex] = true;
-        if (sms) {
-            sms.emulator.input.keyDown(buttonIndex);
+    const key = keyMap[e.key];
+    if (key) {
+        buttons[key] = true;
+        if (core) {
+            core.input.keyDown(key);
         }
+    }
+    
+    // Prevent scrolling with arrow keys
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        e.preventDefault();
     }
 });
 
 document.addEventListener('keyup', (e) => {
-    const buttonIndex = keyMap[e.key];
-    if (buttonIndex !== undefined) {
-        buttons[buttonIndex] = false;
-        if (sms) {
-            sms.emulator.input.keyUp(buttonIndex);
+    const key = keyMap[e.key];
+    if (key) {
+        buttons[key] = false;
+        if (core) {
+            core.input.keyUp(key);
         }
     }
 });
-
-// Prevent default behavior for arrow keys and space
-document.addEventListener('keydown', (e) => {
-    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
-        e.preventDefault();
-    }
-}, { passive: false });
 
 // Auto-save on page close
 window.addEventListener('beforeunload', () => {
@@ -313,7 +256,7 @@ window.addEventListener('beforeunload', () => {
 
 // Clean up on page unload
 window.addEventListener('unload', () => {
-    if (isRunning && sms) {
-        sms.emulator.stop();
+    if (isRunning && core) {
+        core.stop();
     }
 });
