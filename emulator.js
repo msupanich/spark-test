@@ -36,9 +36,32 @@ const keyMap = {
     'Shift': 'select', 'shift': 'select'
 };
 
+// Wait for Cores library to be available
+async function waitForCores() {
+    const maxWait = 10000; // 10 seconds
+    const checkInterval = 100;
+    let waited = 0;
+    
+    while (typeof Cores === 'undefined' && waited < maxWait) {
+        await new Promise(resolve => setTimeout(resolve, checkInterval));
+        waited += checkInterval;
+    }
+    
+    if (typeof Cores === 'undefined') {
+        throw new Error('Cores library failed to load. Check your internet connection.');
+    }
+    
+    return Cores;
+}
+
 // Initialize the emulator
 async function initEmulator() {
     try {
+        statusDiv.textContent = 'Loading Cores library...';
+        
+        // Wait for Cores library
+        const Cores = await waitForCores();
+        
         statusDiv.textContent = 'Initializing emulator...';
         
         // Initialize Cores
