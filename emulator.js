@@ -1,7 +1,7 @@
 // Phantasy Star - Sega Master System Emulator using EmulatorJS
 // Loads ROM from local file and runs full SMS emulation
 
-let core = null;
+let emulator = null;
 let canvas, ctx;
 let isRunning = false;
 let romData = null;
@@ -10,17 +10,16 @@ let audioContext = null;
 const ROM_FILENAME = 'Phantasy Star (World).sms';
 const EMULATOR_WIDTH = 256;
 const EMULATOR_HEIGHT = 240;
-const EMULATOR_FPS = 60;
 
 // Keyboard mappings
 const keyMap = {
-    'ArrowUp': 'up', 'w': 'up', 'W': 'up',
-    'ArrowDown': 'down', 's': 'down', 'S': 'down',
-    'ArrowLeft': 'left', 'a': 'left', 'A': 'left',
-    'ArrowRight': 'right', 'd': 'right', 'D': 'right',
-    ' ': 'a', 'z': 'a', 'Z': 'a',
-    'x': 'b', 'X': 'b',
-    'Enter': 'start', 'enter': 'start'
+    'ArrowUp': 2, 'w': 2, 'W': 2,
+    'ArrowDown': 3, 's': 3, 'S': 3,
+    'ArrowLeft': 4, 'a': 4, 'A': 4,
+    'ArrowRight': 5, 'd': 5, 'D': 5,
+    ' ': 0, 'z': 0, 'Z': 0,
+    'x': 1, 'X': 1,
+    'Enter': 7, 'enter': 7
 };
 
 // Game state
@@ -34,13 +33,6 @@ window.onload = async function() {
     document.getElementById('resetBtn').onclick = resetGame;
     document.getElementById('saveBtn').onclick = saveState;
     document.getElementById('loadBtn').onclick = loadState;
-    
-    // Check for JSMess (EmulatorJS) in global scope
-    if (typeof JSMESS === 'undefined' && typeof core === 'undefined') {
-        document.getElementById('loading').innerHTML = `<div style="color: red;">Error: EmulatorJS library not loaded<br><small>Check your internet connection</small></div>`;
-        document.getElementById('status').textContent = 'Error: Emulator library not loaded';
-        return;
-    }
     
     // Load ROM
     try {
@@ -64,20 +56,23 @@ window.onload = async function() {
 
 // Initialize EmulatorJS
 function initEmulator() {
-    if (core) return;
+    if (emulator) return;
     
-    // Initialize JSMess (EmulatorJS)
-    core = new JSMESS.Core({
-        system: 'sms',
+    // Check if EJS global is available
+    if (typeof EJS === 'undefined') {
+        document.getElementById('loading').innerHTML = `<div style="color: red;">Error: EmulatorJS library not loaded<br><small>Check your internet connection</small></div>`;
+        return;
+    }
+    
+    // Initialize emulator
+    emulator = EJS_core.init({
         canvas: canvas,
         width: EMULATOR_WIDTH,
-        height: EMULATOR_HEIGHT
+        height: EMULATOR_HEIGHT,
+        system: 'sms',
+        sound: true,
+        autoplay: false
     });
-    
-    // Set up audio
-    if (!audioContext) {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    }
 }
 
 // Load ROM into emulator
@@ -88,11 +83,8 @@ function loadROM() {
         // Convert ArrayBuffer to Uint8Array
         const romArray = new Uint8Array(romData);
         
-        // Reset emulator
-        core.reset();
-        
         // Load the ROM
-        core.loadROM(romArray);
+        EJS_core.loadROM(romArray);
         
         return true;
     } catch (error) {
@@ -116,13 +108,18 @@ function startGame() {
     // Initialize emulator
     initEmulator();
     
+    if (!emulator) {
+        document.getElementById('status').textContent = 'Error: Emulator not initialized';
+        return;
+    }
+    
     if (!loadROM()) {
         document.getElementById('status').textContent = 'Error: Failed to load ROM';
         return;
     }
     
     // Start emulation
-    core.start();
+    EJS_core.start();
     isRunning = true;
     
     // Resume audio context
@@ -143,9 +140,7 @@ function startGame() {
 
 // Stop the game
 function stopGame() {
-    if (core) {
-        core.stop();
-    }
+    EJS_core.stop();
     isRunning = false;
     
     // Clear screen
@@ -164,22 +159,18 @@ function stopGame() {
 
 // Reset game
 function resetGame() {
-    if (core) {
-        core.reset();
-        document.getElementById('status').textContent = 'Game reset';
-    }
+    EJS_core.reset();
+    document.getElementById('status').textContent = 'Game reset';
 }
 
 // Save state
 function saveState() {
-    if (core) {
-        try {
-            const state = core.saveState();
-            localStorage.setItem('sms_save', JSON.stringify(state));
-            document.getElementById('status').textContent = 'Game saved!';
-        } catch (e) {
-            document.getElementById('status').textContent = 'Error saving state';
-        }
+    try {
+        const state = EJS_core.saveState();
+        localStorage.setItem('sms_save', JSON.stringify(state));
+        document.getElementById('status').textContent = 'Game saved!';
+    } catch (e) {
+        document.getElementById('status').textContent = 'Error saving state';
     }
 }
 
@@ -187,11 +178,9 @@ function saveState() {
 function loadState() {
     try {
         const saved = localStorage.getItem('sms_save');
-        if (saved && core) {
-            core.loadState(JSON.parse(saved));
+        if (saved) {
+            EJS_core.loadState(JSON.parse(saved));
             document.getElementById('status').textContent = 'Game loaded!';
-        } else if (saved) {
-            document.getElementById('status').textContent = 'Emulator not running. Start game to load state.';
         } else {
             document.getElementById('status').textContent = 'No saved state found';
         }
@@ -209,9 +198,7 @@ function gameLoop(timestamp) {
     lastTime = timestamp;
     
     // Run emulator
-    if (core) {
-        core.run();
-    }
+    EJS_core.frame();
     
     requestAnimationFrame(gameLoop);
 }
@@ -223,12 +210,10 @@ document.addEventListener('keydown', (e) => {
         return;
     }
     
-    const key = keyMap[e.key];
-    if (key) {
-        buttons[key] = true;
-        if (core) {
-            core.input.keyDown(key);
-        }
+    const buttonIndex = keyMap[e.key];
+    if (buttonIndex !== undefined) {
+        buttons[buttonIndex] = true;
+        EJS_core.input.keyDown(buttonIndex);
     }
     
     // Prevent scrolling with arrow keys
@@ -238,12 +223,10 @@ document.addEventListener('keydown', (e) => {
 });
 
 document.addEventListener('keyup', (e) => {
-    const key = keyMap[e.key];
-    if (key) {
-        buttons[key] = false;
-        if (core) {
-            core.input.keyUp(key);
-        }
+    const buttonIndex = keyMap[e.key];
+    if (buttonIndex !== undefined) {
+        buttons[buttonIndex] = false;
+        EJS_core.input.keyUp(buttonIndex);
     }
 });
 
@@ -256,7 +239,7 @@ window.addEventListener('beforeunload', () => {
 
 // Clean up on page unload
 window.addEventListener('unload', () => {
-    if (isRunning && core) {
-        core.stop();
+    if (isRunning) {
+        EJS_core.stop();
     }
 });
