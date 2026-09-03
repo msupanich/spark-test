@@ -1,6 +1,6 @@
 // Phantasy Star - Sega Master System Emulator
 // Uses the Cores emulator library
-// Auto-loads Phantasy Star ROM from GitHub
+// ROM is loaded from a local file in the repo
 
 let cores;
 let sms;
@@ -20,8 +20,8 @@ const loadButton = document.getElementById('loadButton');
 const romInput = document.getElementById('romInput');
 const romNameSpan = document.getElementById('romName');
 
-// Phantasy Star ROM URL (from EmulatorJS data repository)
-const ROM_URL = 'https://raw.githubusercontent.com/emulatorJS/data/master/Sega/Master%20System/Phantasy%20Star%20(World).sms';
+// Phantasy Star ROM filename (must be in the same directory as index.html)
+const ROM_FILENAME = 'Phantasy Star (World).sms';
 
 // Keyboard mappings
 const keyMap = {
@@ -53,7 +53,7 @@ async function initEmulator() {
 
         statusDiv.textContent = 'Loading Phantasy Star ROM...';
         
-        // Auto-load the Phantasy Star ROM
+        // Auto-load the Phantasy Star ROM from local file
         await loadAutoROM();
         
         loadingOverlay.classList.add('hidden');
@@ -67,16 +67,16 @@ async function initEmulator() {
     }
 }
 
-// Auto-load Phantasy Star ROM from URL
+// Auto-load Phantasy Star ROM from local file
 async function loadAutoROM() {
     try {
-        const response = await fetch(ROM_URL);
+        const response = await fetch(ROM_FILENAME);
         if (!response.ok) {
             throw new Error(`Failed to fetch ROM: ${response.status} ${response.statusText}`);
         }
         
         const romData = await response.arrayBuffer();
-        loadedFileName = 'Phantasy Star (World).sms';
+        loadedFileName = ROM_FILENAME;
         
         statusDiv.textContent = 'ROM loaded successfully.';
         await loadROM(romData, 'SMS');
