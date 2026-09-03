@@ -1,5 +1,6 @@
 // Phantasy Star - Sega Master System Emulator
 // Uses the Cores emulator library
+// Auto-loads Phantasy Star ROM from GitHub
 
 let cores;
 let sms;
@@ -18,6 +19,9 @@ const saveButton = document.getElementById('saveButton');
 const loadButton = document.getElementById('loadButton');
 const romInput = document.getElementById('romInput');
 const romNameSpan = document.getElementById('romName');
+
+// Phantasy Star ROM URL (from EmulatorJS data repository)
+const ROM_URL = 'https://raw.githubusercontent.com/emulatorJS/data/master/Sega/Master%20System/Phantasy%20Star%20(World).sms';
 
 // Keyboard mappings
 const keyMap = {
@@ -47,13 +51,14 @@ async function initEmulator() {
             }
         });
 
-        statusDiv.textContent = 'Emulator initialized. Select a ROM file to begin.';
-        updateButtons();
+        statusDiv.textContent = 'Loading Phantasy Star ROM...';
+        
+        // Auto-load the Phantasy Star ROM
+        await loadAutoROM();
         
         loadingOverlay.classList.add('hidden');
-        
-        // Load saved state if available
-        loadGameState();
+        statusDiv.textContent = 'Phantasy Star loaded! Press Start Game to begin.';
+        updateButtons();
 
     } catch (error) {
         console.error('Error initializing emulator:', error);
@@ -62,7 +67,28 @@ async function initEmulator() {
     }
 }
 
-// Handle file input
+// Auto-load Phantasy Star ROM from URL
+async function loadAutoROM() {
+    try {
+        const response = await fetch(ROM_URL);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch ROM: ${response.status} ${response.statusText}`);
+        }
+        
+        const romData = await response.arrayBuffer();
+        loadedFileName = 'Phantasy Star (World).sms';
+        
+        statusDiv.textContent = 'ROM loaded successfully.';
+        await loadROM(romData, 'SMS');
+        
+    } catch (error) {
+        console.error('Error loading ROM:', error);
+        statusDiv.textContent = `Note: Could not auto-load ROM (${error.message}). Please select a ROM file manually.`;
+        // Continue to allow manual ROM selection
+    }
+}
+
+// Handle file input for manual ROM selection
 romInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -86,7 +112,6 @@ romInput.addEventListener('change', async (e) => {
                 break;
             case 'gen':
             case 'iso':
-            case 'bin':
                 consoleType = 'GEN';
                 break;
             case 'nes':
@@ -107,13 +132,11 @@ romInput.addEventListener('change', async (e) => {
         await loadROM(arrayBuffer, consoleType);
         
         statusDiv.textContent = `${file.name} loaded. Press Start Game to begin.`;
-        loadingOverlay.classList.add('hidden');
         updateButtons();
         
     } catch (error) {
         console.error('Error loading ROM:', error);
         statusDiv.textContent = `Error loading ROM: ${error.message}`;
-        loadingOverlay.innerHTML = `<div>Error loading ROM<br><small>${error.message}</small></div>`;
     }
 });
 
@@ -176,7 +199,7 @@ async function startGame() {
     try {
         statusDiv.textContent = 'Starting game...';
         
-        // Initialize audio context on user gesture
+        // Initialize audio context
         initAudio();
         
         await sms.start();

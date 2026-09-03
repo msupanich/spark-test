@@ -187,23 +187,27 @@
     <div class="info-box">
         <h3>About This Emulator</h3>
         <p>This web-based emulator runs Sega Master System games in your browser using the Cores library.</p>
-        <p><strong>Note:</strong> Phantasy Star is copyrighted software. This emulator is for educational purposes. Please support the game by purchasing it if you don't already own it.</p>
-        <p><strong>To play Phantasy Star:</strong> Download the ROM from a trusted source (if you own the original game) and select it using the "Select ROM File" button below.</p>
+        <p><strong>Phantasy Star</strong> is pre-loaded and ready to play! Just press the Start Game button below.</p>
     </div>
 
     <div class="file-input-container">
-        <input type="file" id="romInput" accept=".sms,.bin,.gen,.iso,.gba,.nes,.gba,.sfc,.smc,.gba,.nes,.sfc,.smc,.gba,.nes,.sfc,.smc,.gba,.nes,.sfc,.smc,.gba,.nes,.sfc,.smc,.gba,.nes,.sfc,.smc,.gba,.nes,.sfc,.smc,.gba,.nes,.sfc,.smc,.gba,.nes,.sfc,.smc">
-        <label for="romInput" class="file-label">Select ROM File</label>
-        <span id="romName" style="color: #666; font-size: 14px;">No ROM selected</span>
+        <input type="file" id="romInput" accept=".sms,.bin,.gen,.iso,.gba,.nes,.gba,.sfc,.smc,.gba,.nes,.sfc,.smc,.gba,.nes,.sfc,.smc,.gba,.nes,.sfc,.smc,.gba,.nes,.sfc,.smc,.gba,.nes,.sfc,.smc,.gba,.nes,.sfc,.smc,.gba,.nes,.sfc,.smc">
+        <label for="romInput" class="file-label">Select Another ROM</label>
+        <span id="romName" style="color: #666; font-size: 14px;">Phantasy Star (pre-loaded)</span>
     </div>
 
     <div class="game-container">
         <canvas id="smsCanvas" width="256" height="192"></canvas>
-        <div id="loadingOverlay" class="loading">Loading Emulator...</div>
+        <div id="loadingOverlay" class="loading">
+            <div>
+                <div style="margin-bottom: 10px;">Phantasy Star</div>
+                <div style="font-size: 16px;" id="loadingText">Initializing...</div>
+            </div>
+        </div>
     </div>
 
     <div class="controls">
-        <button id="startButton" disabled>Start Game</button>
+        <button id="startButton">Start Game</button>
         <button id="resetButton" disabled>Reset</button>
         <button id="saveButton" disabled>Save State</button>
         <button id="loadButton" disabled>Load State</button>
@@ -221,7 +225,7 @@
     </div>
 
     <div class="instructions">
-        <p>Select a Sega Master System ROM file to begin.</p>
+        <p>Phantasy Star is pre-loaded and ready to play. Press "Start Game" to begin!</p>
         <p>Your progress will be automatically saved to your browser's local storage.</p>
     </div>
 
