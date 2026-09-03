@@ -38,7 +38,6 @@
         <input type="file" id="romInput" accept=".sms,.gen,.bin">
     </div>
     <div id="game">
-        <canvas id="canvas" width="256" height="240"></canvas>
         <div id="loading" style="position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;justify-content:center;align-items:center;color:#4a90e2;z-index:10;">
             Loading...
         </div>
@@ -58,53 +57,8 @@
     </div>
     <div class="status" id="status">Select a ROM file to begin</div>
     
-    <!-- EmulatorJS CDN -->
-    <script>
-        // Configure EmulatorJS before loading loader.js
-        window.EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/';
-        window.EJS_player = '#game';
-        window.EJS_startOnLoaded = true;
-        window.EJS_hideSettings = true;
-        window.EJS_volume = 0.5;
-        window.EJS_gameName = 'Phantasy Star';
-        window.EJS_gameUrl = 'Phantasy Star (World).sms';
-        
-        window.EJS_ready = function() {
-            console.log('EmulatorJS ready');
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('status').textContent = 'Emulator ready! Select a ROM file or click Start to use Phantasy Star.';
-            
-            // Try to auto-load the ROM from CDN
-            const romUrl = 'https://msupanich.github.io/spark-test/Phantasy%20Star%20%28World%29.sms';
-            fetch(romUrl)
-                .then(response => {
-                    if (response.ok) return response.blob();
-                    throw new Error('ROM not found');
-                })
-                .then(blob => {
-                    window.EJS_emulator.downloadROM(blob, 'Phantasy Star (World).sms');
-                    console.log('ROM auto-loaded from CDN');
-                })
-                .catch(err => {
-                    console.log('ROM auto-load failed:', err);
-                });
-        };
-        
-        window.EJS_onGameStart = function() {
-            document.getElementById('status').textContent = 'Game running!';
-            document.getElementById('resetBtn').disabled = false;
-            document.getElementById('saveBtn').disabled = false;
-            document.getElementById('loadBtn').disabled = false;
-        };
-        
-        window.EJS_onExit = function() {
-            document.getElementById('status').textContent = 'Game exited';
-            document.getElementById('resetBtn').disabled = true;
-            document.getElementById('saveBtn').disabled = true;
-            document.getElementById('loadBtn').disabled = true;
-        };
-    </script>
-    <script src="https://cdn.emulatorjs.org/stable/data/loader.js"></script>
+    <!-- EmulatorJS CDN - Direct minified include -->
+    <script src="https://cdn.emulatorjs.org/stable/data/emulator.min.js"></script>
     
     <!-- Custom UI controls -->
     <script src="emulator.js"></script>
