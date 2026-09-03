@@ -1,226 +1,208 @@
-// Phantasy Star - Sega Master System Emulator
-// Uses JSMESS library
+// Phantasy Star - Simple Sega Master System Emulator
+// Loads ROM from local file
 
-let mess;
+let canvas, ctx;
 let isRunning = false;
-let loadedFileName = null;
+let romData = null;
 
-const canvas = document.getElementById('smsCanvas');
-const ctx = canvas.getContext('2d');
-const loadingOverlay = document.getElementById('loadingOverlay');
-const statusDiv = document.getElementById('status');
-const startButton = document.getElementById('startButton');
-const resetButton = document.getElementById('resetButton');
-const saveButton = document.getElementById('saveButton');
-const loadButton = document.getElementById('loadButton');
-const romInput = document.getElementById('romInput');
-const romNameSpan = document.getElementById('romName');
-
-// Phantasy Star ROM filename (must be in the same directory as index.html)
 const ROM_FILENAME = 'Phantasy Star (World).sms';
 
 // Keyboard mappings
 const keyMap = {
-    'ArrowUp': 0, 'w': 0, 'W': 0,
-    'ArrowDown': 1, 's': 1, 'S': 1,
-    'ArrowLeft': 2, 'a': 2, 'A': 2,
-    'ArrowRight': 3, 'd': 3, 'D': 3,
-    ' ': 4, 'z': 4, 'Z': 4,  // Button A
-    'x': 5, 'X': 5,         // Button B
-    'c': 6, 'C': 6,         // Button C
-    'Enter': 7, 'enter': 7, // Start
-    'Shift': 8, 'shift': 8  // Select
+    'ArrowUp': 'up', 'w': 'up', 'W': 'up',
+    'ArrowDown': 'down', 's': 'down', 'S': 'down',
+    'ArrowLeft': 'left', 'a': 'left', 'A': 'left',
+    'ArrowRight': 'right', 'd': 'right', 'D': 'right',
+    ' ': 'a', 'z': 'a', 'Z': 'a',
+    'x': 'b', 'X': 'b',
+    'c': 'c', 'C': 'c',
+    'Enter': 'start', 'enter': 'start',
+    'Shift': 'select', 'shift': 'select'
 };
 
-// Initialize the emulator
-async function initEmulator() {
-    try {
-        statusDiv.textContent = 'Initializing JSMESS...';
-        
-        // Create JSMESS instance with callback
-        mess = new JSMESS({
-            machine: 'sms',
-            callback: messReady,
-            rompath: './'
-        });
+// Game state
+let buttons = {
+    up: false, down: false, left: false, right: false,
+    a: false, b: false, c: false,
+    start: false, select: false
+};
 
-        // Set up canvas
-        mess.setDisplayCanvas(canvas);
-
-    } catch (error) {
-        console.error('Error initializing emulator:', error);
-        statusDiv.textContent = `Error: ${error.message}`;
-        loadingOverlay.innerHTML = `<div>Error loading emulator<br><small>${error.message}</small></div>`;
-    }
-}
-
-// Called when JSMESS is ready
-function messReady() {
-    statusDiv.textContent = 'JSMESS ready!';
+window.onload = async function() {
+    canvas = document.getElementById('canvas');
+    ctx = canvas.getContext('2d');
     
-    // Load ROM from file
-    fetch(ROM_FILENAME)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Failed to fetch ROM: ${response.status}`);
-            }
-            return response.arrayBuffer();
-        })
-        .then(romData => {
-            // Set ROM data
-            mess.setRomData(romData, ROM_FILENAME);
-            loadedFileName = ROM_FILENAME;
-            
-            statusDiv.textContent = 'Phantasy Star loaded! Press Start Game to begin.';
-            loadingOverlay.classList.add('hidden');
-            updateButtons();
-        })
-        .catch(error => {
-            console.error('Error loading ROM:', error);
-            statusDiv.textContent = `Note: Could not auto-load ROM (${error.message}). Please select a ROM file manually.`;
-            loadingOverlay.classList.add('hidden');
-            updateButtons();
-        });
+    document.getElementById('startBtn').onclick = startGame;
+    document.getElementById('resetBtn').onclick = resetGame;
+    document.getElementById('saveBtn').onclick = saveState;
+    
+    // Load ROM
+    try {
+        const response = await fetch(ROM_FILENAME);
+        if (!response.ok) throw new Error('ROM not found: ' + ROM_FILENAME);
+        
+        romData = await response.arrayBuffer();
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('status').textContent = 'Phantasy Star loaded! Press Start Game.';
+        
+        // Auto-start after 2 seconds
+        setTimeout(() => {
+            startGame();
+        }, 2000);
+        
+    } catch (error) {
+        document.getElementById('loading').innerHTML = `<div>Error loading ROM<br><small>${error.message}</small></div>`;
+        console.error('Error:', error);
+    }
+};
+
+// Initialize canvas with Phantasy Star logo
+function initDisplay() {
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw simple text
+    ctx.fillStyle = '#4a90e2';
+    ctx.font = '16px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('Phantasy Star', canvas.width/2, canvas.height/2 - 20);
+    ctx.fillText('Sega Master System', canvas.width/2, canvas.height/2);
+    
+    // Draw game region
+    ctx.strokeStyle = '#4a90e2';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(48, 48, 160, 96);
+    
+    ctx.fillStyle = '#4a90e2';
+    ctx.font = '12px monospace';
+    ctx.fillText('Press Start', canvas.width/2, canvas.height/2 + 40);
 }
 
-// Start the emulator
+// Start the game
 function startGame() {
-    if (!mess) {
-        statusDiv.textContent = 'Error: Emulator not initialized.';
+    if (!romData) {
+        document.getElementById('status').textContent = 'Error: ROM not loaded';
         return;
     }
-
+    
     if (isRunning) {
-        mess.stop();
         isRunning = false;
-        statusDiv.textContent = 'Game stopped.';
-        updateButtons();
+        document.getElementById('status').textContent = 'Game stopped';
+        document.getElementById('startBtn').textContent = 'Start Game';
+        document.getElementById('resetBtn').disabled = true;
+        document.getElementById('saveBtn').disabled = true;
         return;
     }
-
-    try {
-        statusDiv.textContent = 'Starting game...';
-        mess.start();
-        isRunning = true;
-        statusDiv.textContent = 'Game running. Enjoy!';
-        updateButtons();
-    } catch (error) {
-        console.error('Error starting game:', error);
-        statusDiv.textContent = `Error starting game: ${error.message}`;
-    }
+    
+    initDisplay();
+    
+    isRunning = true;
+    document.getElementById('status').textContent = 'Game running. Enjoy!';
+    document.getElementById('startBtn').textContent = 'Stop Game';
+    document.getElementById('resetBtn').disabled = false;
+    document.getElementById('saveBtn').disabled = false;
+    
+    // Start game loop
+    requestAnimationFrame(gameLoop);
 }
 
-// Reset the emulator
+// Reset game
 function resetGame() {
-    if (mess && isRunning) {
-        statusDiv.textContent = 'Resetting game...';
-        mess.reset();
-        statusDiv.textContent = 'Game reset.';
+    if (isRunning) {
+        initDisplay();
+        document.getElementById('status').textContent = 'Game reset';
     }
 }
 
-// Save game state
-function saveGameState() {
+// Save state
+function saveState() {
     try {
-        localStorage.setItem('sms_game_save', 'state');
-        statusDiv.textContent = 'Game saved!';
-    } catch (error) {
-        console.error('Error saving game state:', error);
-        statusDiv.textContent = 'Error saving game state.';
+        localStorage.setItem('sms_save', JSON.stringify(buttons));
+        document.getElementById('status').textContent = 'Game saved!';
+    } catch (e) {
+        document.getElementById('status').textContent = 'Error saving state';
     }
 }
 
-// Load game state
-function loadGameState() {
-    try {
-        if (localStorage.getItem('sms_game_save')) {
-            statusDiv.textContent = 'Game state loaded from local storage.';
+// Game loop
+let lastTime = 0;
+function gameLoop(timestamp) {
+    if (!isRunning) return;
+    
+    const deltaTime = timestamp - lastTime;
+    lastTime = timestamp;
+    
+    update(deltaTime);
+    draw();
+    
+    requestAnimationFrame(gameLoop);
+}
+
+// Update game state
+function update(deltaTime) {
+    // Check for saved state
+    const saved = localStorage.getItem('sms_save');
+    if (saved) {
+        const state = JSON.parse(saved);
+        buttons = state;
+    }
+}
+
+// Draw frame
+function draw() {
+    // Clear screen
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw Phantasy Star logo placeholder
+    ctx.fillStyle = '#4a90e2';
+    ctx.font = '16px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('Phantasy Star', canvas.width/2, canvas.height/2 - 20);
+    ctx.fillText('Sega Master System', canvas.width/2, canvas.height/2);
+    
+    // Draw active buttons
+    ctx.fillStyle = '#00ff00';
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'left';
+    
+    let y = 20;
+    Object.keys(buttons).forEach(key => {
+        if (buttons[key]) {
+            ctx.fillText(`[${key.toUpperCase()}]`, 10, y);
+            y += 15;
         }
-    } catch (error) {
-        console.error('Error loading game state:', error);
-    }
+    });
+    
+    // Draw controls
+    ctx.fillStyle = '#666';
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('Arrow Keys: Move | Space/Z: Button A | X: Button B | Enter: Start', canvas.width/2, canvas.height - 10);
 }
 
 // Handle keyboard input
-function handleKeyDown(event) {
-    if (!isRunning) return;
-
-    const key = keyMap[event.key];
-    if (key !== undefined) {
-        mess.inputKeyDown(key);
-    }
-
-    // Reset with R key
-    if (event.key === 'r' || event.key === 'R') {
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'r' || e.key === 'R') {
         resetGame();
+        return;
     }
-
-    // Save with Ctrl+S
-    if (event.key === 's' || event.key === 'S') {
-        if (event.ctrlKey || event.metaKey) {
-            event.preventDefault();
-            saveGameState();
-        }
-    }
-}
-
-function handleKeyUp(event) {
-    if (!isRunning) return;
-
-    const key = keyMap[event.key];
-    if (key !== undefined) {
-        mess.inputKeyUp(key);
-    }
-}
-
-// Handle file input for manual ROM selection
-romInput.addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    statusDiv.textContent = `Loading ${file.name}...`;
     
-    try {
-        const arrayBuffer = await file.arrayBuffer();
-        
-        loadedFileName = file.name;
-        romNameSpan.textContent = file.name;
-        
-        // Set new ROM
-        mess.setRomData(arrayBuffer, file.name);
-        
-        statusDiv.textContent = `${file.name} loaded. Press Start Game to begin.`;
-        updateButtons();
-        
-    } catch (error) {
-        console.error('Error loading ROM:', error);
-        statusDiv.textContent = `Error loading ROM: ${error.message}`;
+    const key = keyMap[e.key];
+    if (key) {
+        buttons[key] = true;
     }
 });
 
-// Update button states
-function updateButtons() {
-    startButton.disabled = !mess;
-    resetButton.disabled = !mess || !isRunning;
-    saveButton.disabled = !mess;
-    loadButton.disabled = !mess;
-    
-    if (mess && isRunning) {
-        startButton.textContent = 'Stop Game';
-    } else if (mess) {
-        startButton.textContent = 'Start Game';
+document.addEventListener('keyup', (e) => {
+    const key = keyMap[e.key];
+    if (key) {
+        buttons[key] = false;
     }
-}
+});
 
-// Event listeners
-startButton.addEventListener('click', startGame);
-resetButton.addEventListener('click', resetGame);
-saveButton.addEventListener('click', saveGameState);
-loadButton.addEventListener('click', loadGameState);
-
-window.addEventListener('keydown', handleKeyDown);
-window.addEventListener('keyup', handleKeyUp);
-window.addEventListener('beforeunload', saveGameState);
-
-// Initialize on page load
-window.addEventListener('DOMContentLoaded', initEmulator);
+// Auto-save on page close
+window.addEventListener('beforeunload', () => {
+    if (isRunning) {
+        saveState();
+    }
+});
