@@ -72,7 +72,22 @@
         window.EJS_ready = function() {
             console.log('EmulatorJS ready');
             document.getElementById('loading').style.display = 'none';
-            document.getElementById('status').textContent = 'Emulator ready! Select a ROM file.';
+            document.getElementById('status').textContent = 'Emulator ready! Select a ROM file or click Start to use Phantasy Star.';
+            
+            // Try to auto-load the ROM from CDN
+            const romUrl = 'https://msupanich.github.io/spark-test/Phantasy%20Star%20%28World%29.sms';
+            fetch(romUrl)
+                .then(response => {
+                    if (response.ok) return response.blob();
+                    throw new Error('ROM not found');
+                })
+                .then(blob => {
+                    window.EJS_emulator.downloadROM(blob, 'Phantasy Star (World).sms');
+                    console.log('ROM auto-loaded from CDN');
+                })
+                .catch(err => {
+                    console.log('ROM auto-load failed:', err);
+                });
         };
         
         window.EJS_onGameStart = function() {
