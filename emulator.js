@@ -2,7 +2,7 @@
 // Uses CDN loader.js with proper configuration
 
 let isRunning = false;
-let romData = null;
+let romLoaded = false;
 const ROM_FILENAME = 'Phantasy Star (World).sms';
 
 document.addEventListener('DOMContentLoaded', async function() {
@@ -18,20 +18,53 @@ document.addEventListener('DOMContentLoaded', async function() {
     loadBtn.onclick = loadState;
     stopBtn.onclick = stopGame;
     
+    // Try to load ROM from repo
     try {
         const response = await fetch(ROM_FILENAME);
         if (response.ok) {
-            romData = await response.arrayBuffer();
-            document.getElementById('status').textContent = 'Phantasy Star ROM found! Ready to play.';
-            startBtn.disabled = false;
-            setTimeout(() => { if (!isRunning && window.EJS_emulator) startGame(); }, 1000);
+            const blob = await response.blob();
+            if (window.EJS_emulator) {
+                window.EJS_emulator.downloadROM(blob, ROM_FILENAME);
+                romLoaded = true;
+                document.getElementById('status').textContent = 'Phantasy Star ROM loaded! Ready to play.';
+                startBtn.disabled = false;
+                // Auto-start
+                setTimeout(() => { if (!isRunning && romLoaded) startGame(); }, 1000);
+            } else {
+                document.getElementById('status').textContent = 'ROM ready but emulator not loaded yet.';
+            }
         } else {
-            document.getElementById('status').textContent = 'ROM not found. Please select one below.';
+            document.getElementById('status').textContent = 'ROM file not found in repo.';
         }
     } catch (error) {
-        console.log('ROM not found:', error);
+        console.log('ROM fetch failed:', error);
+        document.getElementById('status').textContent = 'Ready to load ROM file.';
     }
+    
+    // Setup file input for ROM selection
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.sms,.gen,.bin';
+    fileInput.style.display = 'none';
+    fileInput.onchange = handleFileSelect;
+    document.body.appendChild(fileInput);
+    window.fileInput = fileInput;
 });
+
+function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file || !window.EJS_emulator) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const blob = new Blob([e.target.result], { type: 'application/octet-stream' });
+        window.EJS_emulator.downloadROM(blob, file.name);
+        romLoaded = true;
+        document.getElementById('status').textContent = `Loaded: ${file.name}`;
+        document.getElementById('startBtn').disabled = false;
+    };
+    reader.readAsArrayBuffer(file);
+}
 
 function startGame() {
     if (!window.EJS_emulator) {
@@ -39,21 +72,29 @@ function startGame() {
         return;
     }
     if (isRunning) { stopGame(); return; }
+    
+    if (!romLoaded) {
+        // Open file picker
+        window.fileInput.click();
+        return;
+    }
+    
     window.EJS_emulator.start();
     isRunning = true;
+    
     document.getElementById('status').textContent = 'Game running. Enjoy!';
     document.getElementById('startBtn').disabled = true;
     document.getElementById('resetBtn').disabled = false;
     document.getElementById('saveBtn').disabled = false;
     document.getElementById('loadBtn').disabled = false;
     document.getElementById('stopBtn').disabled = false;
-    document.getElementById('loading').classList.add('hidden');
 }
 
 function stopGame() {
     window.EJS_emulator.exit();
     isRunning = false;
-    document.getElementById('status').textContent = 'Game stopped';
+    
+    document.getElementById('status').textContent = 'Game exited';
     document.getElementById('startBtn').disabled = false;
     document.getElementById('resetBtn').disabled = true;
     document.getElementById('saveBtn').disabled = true;
@@ -61,13 +102,14 @@ function stopGame() {
     document.getElementById('stopBtn').disabled = true;
 }
 
-function resetGame() { if (window.EJS_emulator) { window.EJS_emulator.reset(); document.getElementById('status').textContent = 'Game reset'; } }
-function saveState() { try { if (window.EJS_emulator) { window.EJS_emulator.saveState(); } document.getElementById('status').textContent = 'Game saved!'; } catch(e) { } }
-function loadState() { try { if (window.EJS_emulator) { window.EJS_emulator.loadState(); } document.getElementById('status').textContent = 'Game loaded!'; } catch(e) { } }
+function resetGame() { if (window.EJS_emulator) { window.EJS_emulator.reset(); } }
+function saveState() { try { if (window.EJS_emulator) { window.EJS_emulator.saveState(); } } catch(e) { } }
+function loadState() { try { if (window.EJS_emulator) { window.EJS_emulator.loadState(); } } catch(e) { } }
 
 document.addEventListener('keydown', (e) => {
     if (e.key === 'r' || e.key === 'R') { resetGame(); return; }
     if (!window.EJS_emulator || !window.EJS_emulator.input) return;
+    
     const key = e.key.toLowerCase();
     let button = null;
     if (key === ' ' || key === 'z') button = 0;
