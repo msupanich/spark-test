@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phantasy Star - Sega Master System Emulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: #1a1a1a;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            color: #4a90e2;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .game-container {
+            position: relative;
+            border: 4px solid #4a90e2;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(74, 144, 226, 0.5);
+        }
+
+        canvas {
+            display: block;
+            background-color: #000;
+            image-rendering: pixelated;
+            max-width: 100%;
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            font-family: inherit;
+            font-weight: bold;
+            background-color: #4a90e2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #3a7bc8;
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .file-input-container {
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .file-input-container input[type="file"] {
+            display: none;
+        }
+
+        .file-label {
+            padding: 10px 20px;
+            background-color: #4a90e2;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .file-label:hover {
+            background-color: #3a7bc8;
+        }
+
+        .instructions {
+            margin-top: 20px;
+            max-width: 600px;
+            text-align: center;
+            line-height: 1.6;
+            color: #ccc;
+        }
+
+        .loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #4a90e2;
+            font-size: 24px;
+            z-index: 10;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .status {
+            margin-top: 15px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .keyboard-mappings {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #2a2a2a;
+            border-radius: 8px;
+        }
+
+        .keyboard-mappings h3 {
+            color: #4a90e2;
+            margin-bottom: 15px;
+        }
+
+        .key-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .key {
+            display: inline-block;
+            padding: 5px 10px;
+            background-color: #4a4a4a;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .info-box {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #333;
+            border-radius: 8px;
+            max-width: 600px;
+        }
+
+        .info-box h3 {
+            color: #4a90e2;
+            margin-bottom: 10px;
+        }
+
+        .info-box p {
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <h1>Phantasy Star - Sega Master System</h1>
+    
+    <div class="info-box">
+        <h3>About This Emulator</h3>
+        <p>This web-based emulator runs Sega Master System games in your browser using the Cores library.</p>
+        <p><strong>Note:</strong> Phantasy Star is copyrighted software. This emulator is for educational purposes. Please support the game by purchasing it if you don't already own it.</p>
+        <p><strong>To play Phantasy Star:</strong> Download the ROM from a trusted source (if you own the original game) and select it using the "Select ROM File" button below.</p>
+    </div>
+
+    <div class="file-input-container">
+        <input type="file" id="romInput" accept=".sms,.bin,.gen,.iso,.gba,.nes,.gba,.sfc,.smc,.gba,.nes,.sfc,.smc,.gba,.nes,.sfc,.smc,.gba,.nes,.sfc,.smc,.gba,.nes,.sfc,.smc,.gba,.nes,.sfc,.smc,.gba,.nes,.sfc,.smc,.gba,.nes,.sfc,.smc,.gba,.nes,.sfc,.smc">
+        <label for="romInput" class="file-label">Select ROM File</label>
+        <span id="romName" style="color: #666; font-size: 14px;">No ROM selected</span>
+    </div>
+
+    <div class="game-container">
+        <canvas id="smsCanvas" width="256" height="192"></canvas>
+        <div id="loadingOverlay" class="loading">Loading Emulator...</div>
+    </div>
+
+    <div class="controls">
+        <button id="startButton" disabled>Start Game</button>
+        <button id="resetButton" disabled>Reset</button>
+        <button id="saveButton" disabled>Save State</button>
+        <button id="loadButton" disabled>Load State</button>
+    </div>
+
+    <div class="keyboard-mappings">
+        <h3>Keyboard Controls</h3>
+        <div class="key-row"><span>Arrow Keys / WASD:</span> <span class="key">Move</span></div>
+        <div class="key-row"><span>Space / Z:</span> <span class="key">Button A</span></div>
+        <div class="key-row"><span>X:</span> <span class="key">Button B</span></div>
+        <div class="key-row"><span>C:</span> <span class="key">Button C</span></div>
+        <div class="key-row"><span>Enter:</span> <span class="key">Start</span></div>
+        <div class="key-row"><span>Shift:</span> <span class="key">Select</span></div>
+        <div class="key-row"><span>R:</span> <span class="key">Reset</span></div>
+    </div>
+
+    <div class="instructions">
+        <p>Select a Sega Master System ROM file to begin.</p>
+        <p>Your progress will be automatically saved to your browser's local storage.</p>
+    </div>
+
+    <div class="status" id="status">Ready to load ROM</div>
+
+    <script src="https://unpkg.com/@jsretro/cores@latest/dist/cores.min.js"></script>
+    <script src="emulator.js"></script>
+</body>
+</html>
