@@ -186,12 +186,12 @@
     
     <div class="info-box">
         <h3>About This Emulator</h3>
-        <p>This web-based emulator runs Sega Master System games in your browser using the Cores library.</p>
+        <p>This web-based emulator runs Sega Master System games in your browser.</p>
         <p><strong>Phantasy Star</strong> is pre-loaded and ready to play! Just press the Start Game button below.</p>
     </div>
 
     <div class="file-input-container">
-        <input type="file" id="romInput" accept=".sms,.bin,.gen,.iso,.gba,.nes,.gba,.sfc,.smc,.gba,.nes,.sfc,.smc,.gba,.nes,.sfc,.smc,.gba,.nes,.sfc,.smc,.gba,.nes,.sfc,.smc,.gba,.nes,.sfc,.smc,.gba,.nes,.sfc,.smc,.gba,.nes,.sfc,.smc">
+        <input type="file" id="romInput" accept=".sms,.bin">
         <label for="romInput" class="file-label">Select Another ROM</label>
         <span id="romName" style="color: #666; font-size: 14px;">Phantasy Star (pre-loaded)</span>
     </div>
@@ -229,9 +229,10 @@
         <p>Your progress will be automatically saved to your browser's local storage.</p>
     </div>
 
-    <div class="status" id="status">Ready to load ROM</div>
+    <div class="status" id="status">Ready</div>
 
-    <script src="https://unpkg.com/@jsretro/cores@latest/dist/cores.min.js"></script>
+    <!-- JSMESS for Sega Master System emulation -->
+    <script src="https://unpkg.com/jsmess@0.2.0/dist/jsmess.min.js"></script>
     <script src="emulator.js"></script>
 </body>
 </html>

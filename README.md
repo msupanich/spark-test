@@ -1,26 +1,18 @@
 # Phantasy Star - Sega Master System
 
-A web-based Sega Master System emulator that runs in your browser.
+A web-based Sega Master System emulator running Phantasy Star in your browser.
 
-## Setup
+## How to Use
 
 1. **Deploy to GitHub Pages**
-   - Push all files to the `main` branch
+   - Push all files to the `main` branch of your GitHub repository
    - Go to Settings > Pages > Source and select `main` branch
    - Your site will be live at `https://<username>.github.io/spark-test/`
 
-2. **Add the Phantasy Star ROM**
-   
-   Phantasy Star is copyrighted software. You must own a copy of the game to use this ROM.
-
-   **Options to get the ROM:**
-   - If you own the original cartridge, you can create a backup using a flash cartridge or ROM dumper
-   - Some old ROM sites may have copies (check legality in your country)
-
-   **Once you have the ROM:**
-   - The emulator accepts files with extensions: `.sms`, `.bin`
-   - Select the ROM file using the "Select ROM File" button on the page
+2. **Play the Game**
+   - Phantasy Star is pre-loaded and ready to play
    - Press "Start Game" to begin
+   - Use keyboard controls to play
 
 ## Controls
 
@@ -33,18 +25,24 @@ A web-based Sega Master System emulator that runs in your browser.
 | Enter | Start |
 | Shift | Select |
 | R | Reset |
-| Ctrl+S | Save State |
+
+## Features
+
+- **Pre-loaded ROM**: Phantasy Star starts automatically
+- **Auto-save**: Your progress is saved to local storage
+- **Keyboard support**: Full keyboard mapping for all game actions
+- **No build required**: Pure HTML/JS running on GitHub Pages
 
 ## Technical Details
 
-- Emulator: [Cores Library](https://github.com/jsretro/cores)
+- Emulator: [JSMESS](https://unpkg.com/jsmess)
 - Console: Sega Master System / Mark III
 - Language: JavaScript (ES6+)
 - Hosting: GitHub Pages
 
 ## Legal Notice
 
-This project is for educational purposes. Phantasy Star (1987) is copyrighted software owned by Sega. Please support the developers by purchasing the game if you don't already own it.
+Phantasy Star (1987) is copyrighted software owned by Sega. This emulator is for educational purposes. Please support the game by purchasing it if you don't already own it.
 
 ## License
 
